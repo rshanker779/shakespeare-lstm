@@ -13,10 +13,12 @@ setup(name="shakespeare-lstm",
       url="https://github.com/rshanker779/shakespeare-lstm",
       license='MIT',
       python_requires='>=3.5',
-      install_requires=['nltk',
-                        'keras',
-                        'numpy',
-                        'setuptools'],
+      install_requires=[
+          'keras',
+          'nltk',
+          'numpy',
+          'tensorflow',
+          'setuptools'],
       packages=['src'],
 
-)
+      )
