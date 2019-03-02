@@ -8,17 +8,20 @@ import numpy as np
 
 
 class GlobalParams:
-    model_save_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'model', 'shakespeare.h5')
+    """Holder for general params"""
+    model_save_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model', 'shakespeare.h5')
     train_model = False
 
 
 class Dimensions:
+    """Holder for params of our data set"""
     p = 1
     chunks = 10
     num_classes = 1
 
 
 def get_play_str(play):
+    """Loads a Shakespeare play from nltk, name must match xml names of plays in nltk"""
     try:
         play = shakespeare.xml(play)
         full_str = ''.join(play.itertext())
@@ -30,12 +33,15 @@ def get_play_str(play):
 
 
 def encode_chars(input_str):
+    """One hot encode our character set. Could alternatively use scikit learn OneHotEncoder"""
     num_chars = sorted(list(set(input_str)))
     char_map = {j: i for i, j in enumerate(num_chars)}
     return char_map
 
 
 def split_str_to_sequences(input_str, chunks, char_map):
+    """Takes our long input string, splits into chunks we will feed to model and
+    encodes character using our map."""
     n = len(input_str)
     p = len(char_map)
     train_x = np.zeros((n - chunks, chunks, p))
@@ -48,12 +54,8 @@ def split_str_to_sequences(input_str, chunks, char_map):
     return train_x, train_y
 
 
-def validate_train_test(train_x, train_y):
-    for i in range(len(train_x)):
-        print((train_x[i], train_y[i]))
-
-
 def get_lstm(train_x, train_y, chunks, p, num_classes, filepath=None):
+    """Trains and saves our LSTM model"""
     model = Sequential()
     model.add(LSTM(120, input_shape=(chunks, p)))
     model.add(Dense(num_classes, activation='softmax'))
@@ -65,10 +67,11 @@ def get_lstm(train_x, train_y, chunks, p, num_classes, filepath=None):
 
 
 def generate_random_text(model, char_map, inital_str, output_size, chunk):
+    """Take a string, takes the last chunk and repeatedly feeds it through the model"""
     output_str = inital_str[:]
     inverse_char_map = {j: i for i, j in char_map.items()}
     for _ in range(output_size):
-        next_str = output_str[-Dimensions.chunks:]
+        next_str = output_str[-chunk:]
         next_char_index = get_next_prediction(model, char_map, next_str, chunk)
         next_char = inverse_char_map[next_char_index]
         output_str += next_char
@@ -76,6 +79,8 @@ def generate_random_text(model, char_map, inital_str, output_size, chunk):
 
 
 def get_next_prediction(model, char_map, inital_str, chunk):
+    """Take our input string, get model's probabilistic predictions, and pick
+    next character according to those probabilities"""
     initial_y = np.zeros((1, chunk, len(char_map)))
     for index, j in enumerate(inital_str):
         initial_y[:, index, char_map[j]] = 1
