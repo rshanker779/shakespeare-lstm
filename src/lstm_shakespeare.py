@@ -8,7 +8,7 @@ import numpy as np
 
 
 class GlobalParams:
-    model_save_path = os.path.join('model', 'shakespeare.h5')
+    model_save_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),'model', 'shakespeare.h5')
     train_model = False
 
 

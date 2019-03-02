@@ -18,7 +18,11 @@ setup(name="shakespeare-lstm",
           'nltk',
           'numpy',
           'tensorflow',
-          'setuptools'],
+          'setuptools',
+          'setuptools-git'],
       packages=['src'],
+      entry_points={'console_scripts': ['shake_lstm=src.lstm_shakespeare:main']},
+
+      include_package_data=True,
 
       )
