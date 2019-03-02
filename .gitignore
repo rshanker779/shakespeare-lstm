@@ -1,0 +1,6 @@
+*.idea*
+build/
+dist/
+cellular_automata.egg-info/
+*__pycache__*
+*.mypy_cache*
