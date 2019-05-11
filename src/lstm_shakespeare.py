@@ -91,9 +91,16 @@ def get_next_prediction(model, char_map, inital_str, chunk):
     return next_char_index
 
 
+def get_simple_prediction(input: str, output_len: int = 1000):
+    if len(input) < Dimensions.chunks:
+        input += ' ' * (Dimensions.chunks - len(input))
+    model = load_model(GlobalParams.model_save_path)
+    char_map, _ = get_char_map()
+    return generate_random_text(model, char_map, input[:Dimensions.chunks], output_len, Dimensions.chunks)
+
+
 def main():
-    play_str = get_play_str('dream.xml')
-    char_map = encode_chars(play_str)
+    char_map, play_str = get_char_map()
     Dimensions.num_classes = len(char_map)
     Dimensions.p = len(char_map)
     train_x, train_y = split_str_to_sequences(play_str, Dimensions.chunks, char_map)
@@ -111,6 +118,12 @@ def main():
 
     output_str = generate_random_text(model, char_map, 'Romeo and ', 1000, Dimensions.chunks)
     print(output_str)
+
+
+def get_char_map():
+    play_str = get_play_str('dream.xml')
+    char_map = encode_chars(play_str)
+    return char_map, play_str
 
 
 if __name__ == '__main__':
