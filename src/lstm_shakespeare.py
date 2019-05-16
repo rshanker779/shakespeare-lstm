@@ -20,16 +20,17 @@ class Dimensions:
     num_classes = 1
 
 
-def get_play_str(play):
+def get_play_str(play, strip_new_lines=True):
     """Loads a Shakespeare play from nltk, name must match xml names of plays in nltk"""
     try:
         play = shakespeare.xml(play)
         full_str = ''.join(play.itertext())
-        full_str = full_str.replace('\n', ' ')
+        if strip_new_lines:
+            full_str = full_str.replace('\n', ' ')
         return full_str
     except LookupError:
         nltk.download('shakespeare')
-        get_play_str(play)
+        get_play_str(play, strip_new_lines)
 
 
 def encode_chars(input_str):
@@ -96,7 +97,7 @@ def get_simple_prediction(input: str, output_len: int = 1000):
         input += ' ' * (Dimensions.chunks - len(input))
     model = load_model(GlobalParams.model_save_path)
     char_map, _ = get_char_map()
-    return generate_random_text(model, char_map, input[:Dimensions.chunks], output_len, Dimensions.chunks)
+    return input[:-Dimensions.chunks]+generate_random_text(model, char_map, input[-Dimensions.chunks:], output_len, Dimensions.chunks)
 
 
 def main():
