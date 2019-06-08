@@ -1,20 +1,32 @@
 import os
 import random
-from keras.models import Sequential, load_model
-from keras.layers import LSTM, Dense
+import tensorflow as tf
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import LSTM, Dense
+try:
+    #This is only available on tf-gpu
+    from tensorflow.keras.layers import CuDNNLSTM
+except ImportError:
+    #Purely for IDE complaining about variable being callable
+    CuDNNLSTM = lambda *args, **kwargs: None
 import nltk
 from nltk.corpus import shakespeare
 import numpy as np
 
 
+
 class GlobalParams:
     """Holder for general params"""
-    model_save_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model', 'shakespeare.h5')
-    train_model = False
+
+    model_save_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "model", "shakespeare.h5"
+    )
+    train_model = True
 
 
 class Dimensions:
     """Holder for params of our data set"""
+
     p = 1
     chunks = 10
     num_classes = 1
@@ -23,13 +35,13 @@ class Dimensions:
 def get_play_str(play, strip_new_lines=True):
     """Loads a Shakespeare play from nltk, name must match xml names of plays in nltk"""
     try:
-        play = shakespeare.xml(play)
-        full_str = ''.join(play.itertext())
+        loaded_play = shakespeare.xml(play)
+        full_str = "".join(loaded_play.itertext())
         if strip_new_lines:
-            full_str = full_str.replace('\n', ' ')
+            full_str = full_str.replace("\n", " ")
         return full_str
     except LookupError:
-        nltk.download('shakespeare')
+        nltk.download("shakespeare")
         get_play_str(play, strip_new_lines)
 
 
@@ -48,7 +60,7 @@ def split_str_to_sequences(input_str, chunks, char_map):
     train_x = np.zeros((n - chunks, chunks, p))
     train_y = np.zeros((n - chunks, p))
     for i in range(chunks, n):
-        str_chunk = input_str[i - chunks:i]
+        str_chunk = input_str[i - chunks : i]
         for index, j in enumerate(str_chunk):
             train_x[i - chunks, index, char_map[j]] = 1
         train_y[i - chunks, char_map[input_str[i]]] = 1
@@ -58,10 +70,16 @@ def split_str_to_sequences(input_str, chunks, char_map):
 def get_lstm(train_x, train_y, chunks, p, num_classes, filepath=None):
     """Trains and saves our LSTM model"""
     model = Sequential()
-    model.add(LSTM(120, input_shape=(chunks, p)))
-    model.add(Dense(num_classes, activation='softmax'))
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-    model.fit(train_x, train_y, epochs=20)
+    if tf.test.is_gpu_available():
+        sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+        model.add(CuDNNLSTM(120, input_shape=(chunks, p)))
+    else:
+        model.add(LSTM(120, input_shape=(chunks, p)))
+    model.add(Dense(num_classes, activation="softmax"))
+    model.compile(
+        loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
+    )
+    model.fit(train_x, train_y, epochs=20, batch_size=128)
     if filepath is not None:
         model.save(filepath)
     return model
@@ -94,10 +112,12 @@ def get_next_prediction(model, char_map, inital_str, chunk):
 
 def get_simple_prediction(input: str, output_len: int = 1000):
     if len(input) < Dimensions.chunks:
-        input += ' ' * (Dimensions.chunks - len(input))
+        input += " " * (Dimensions.chunks - len(input))
     model = load_model(GlobalParams.model_save_path)
     char_map, _ = get_char_map()
-    return input[:-Dimensions.chunks]+generate_random_text(model, char_map, input[-Dimensions.chunks:], output_len, Dimensions.chunks)
+    return input[: -Dimensions.chunks] + generate_random_text(
+        model, char_map, input[-Dimensions.chunks :], output_len, Dimensions.chunks
+    )
 
 
 def main():
@@ -107,25 +127,39 @@ def main():
     train_x, train_y = split_str_to_sequences(play_str, Dimensions.chunks, char_map)
     if not GlobalParams.train_model:
         try:
-            print('Loading model')
+            print("Loading model")
             model = load_model(GlobalParams.model_save_path)
         except OSError:
-            print('Model not found, retraining')
-            model = get_lstm(train_x, train_y, Dimensions.chunks, Dimensions.p, Dimensions.num_classes,
-                             GlobalParams.model_save_path)
+            print("Model not found, retraining")
+            model = get_lstm(
+                train_x,
+                train_y,
+                Dimensions.chunks,
+                Dimensions.p,
+                Dimensions.num_classes,
+                GlobalParams.model_save_path,
+            )
     else:
-        model = get_lstm(train_x, train_y, Dimensions.chunks, Dimensions.p, Dimensions.num_classes,
-                         GlobalParams.model_save_path)
+        model = get_lstm(
+            train_x,
+            train_y,
+            Dimensions.chunks,
+            Dimensions.p,
+            Dimensions.num_classes,
+            GlobalParams.model_save_path,
+        )
 
-    output_str = generate_random_text(model, char_map, 'Romeo and ', 1000, Dimensions.chunks)
+    output_str = generate_random_text(
+        model, char_map, "Romeo and ", 1000, Dimensions.chunks
+    )
     print(output_str)
 
 
 def get_char_map():
-    play_str = get_play_str('dream.xml')
+    play_str = get_play_str("dream.xml", False)
     char_map = encode_chars(play_str)
     return char_map, play_str
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
